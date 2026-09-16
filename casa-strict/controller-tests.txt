@@ -1,0 +1,18 @@
+    @Test public void casaTimeoutRestoresListeningWithoutOpeningGenericVoice() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(true);
+        listen();controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size()-1).run();
+        monitor.when(AudioStateMonitor::hasOwnLiveCapture).thenReturn(true);
+        delayed.get(delayed.size()-1).run();
+        assertEquals(WakeController.State.KWS_LISTENING,controller.state());
+        launcher.verify(() -> GptLauncher.launchProjectVoice(any()),times(1));
+        launcher.verifyNoMoreInteractions();
+    }
+    @Test public void rejectedCasaLaunchRestoresListeningWithoutFallback() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(false);
+        monitor.when(AudioStateMonitor::hasOwnLiveCapture).thenReturn(true);
+        listen();controller.onKeyword("ey_sebas");delayed.get(delayed.size()-1).run();
+        assertEquals(WakeController.State.KWS_LISTENING,controller.state());
+        launcher.verify(() -> GptLauncher.launchProjectVoice(any()),times(1));
+        launcher.verifyNoMoreInteractions();
+    }
