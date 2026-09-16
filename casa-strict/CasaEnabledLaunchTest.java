@@ -10,7 +10,7 @@ import org.mockito.MockedStatic;
 import org.robolectric.*;
 import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk=33)
+@Config(sdk={32,33})
 public class CasaEnabledLaunchTest {
  @Test public void enabledServiceRejectedProjectNeverLaunchesGenericVoice() {
   List<Intent> launched=new ArrayList<>();
