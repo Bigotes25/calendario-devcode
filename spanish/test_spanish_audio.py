@@ -12,7 +12,11 @@ SetLogLevel(-1)
 model = Model(str(root))
 grammar = json.dumps(['ey sebas', 'hey sebas', 'eh sebas', '[unk]'])
 failures = []
-for wav in sorted(fixtures.glob('*.wav')):
+files = sorted(fixtures.glob('*.wav'))
+assert len(files) == 10, f'Expected 10 audio fixtures, found {len(files)}'
+assert sum(p.name.startswith('positive-') for p in files) == 5
+assert sum(p.name.startswith('negative-') for p in files) == 5
+for wav in files:
     recognizer = KaldiRecognizer(model, 16000, grammar)
     hits = []
     with wave.open(str(wav)) as f:

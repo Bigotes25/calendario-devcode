@@ -61,3 +61,23 @@ replace(root/'app/build.gradle.kts', 'dependencies {', '''dependencies {
 replace(root/'app/src/main/res/values/strings.xml', 'Escribe “ey sebas” para el detector optimizado',
         'Escribe “ey sebas” para el detector local en español')
 print('Applied offline Spanish recognition for Ey Sebas')
+
+ui = main / 'ui/GptWakeScreen.kt'
+replace(ui, 'SensitivityCard(onRestartListening, selection.language, Modifier.weight(1f))',
+        'SensitivityCard(onRestartListening, selection.language, selection.phrase, Modifier.weight(1f))')
+replace(ui, 'SensitivityCard(onRestartListening, selection.language)',
+        'SensitivityCard(onRestartListening, selection.language, selection.phrase)')
+replace(ui, '''private fun SensitivityCard(
+    onCommit: () -> Unit,
+    language: WakeLanguage,''', '''private fun SensitivityCard(
+    onCommit: () -> Unit,
+    language: WakeLanguage,
+    phrase: String,''')
+replace(ui, '''    var value by remember { mutableFloatStateOf(WakeWordStore.threshold(context).coerceIn(0.20f, 0.60f)) }''',
+'''    if (com.desmond.gptwake.SpanishWakePhrase.isSelected(phrase)) {
+        SectionCard("Activación por voz", modifier = modifier) {
+            Hint("Di «ey sebas» y deja una breve pausa.")
+        }
+        return
+    }
+    var value by remember { mutableFloatStateOf(WakeWordStore.threshold(context).coerceIn(0.20f, 0.60f)) }''')

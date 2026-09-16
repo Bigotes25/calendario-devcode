@@ -3,9 +3,9 @@ package com.desmond.gptwake;
 import java.util.Locale;
 
 /** Whole-word matching; a name on its own must never activate the assistant. */
-final class SpanishWakePhrase {
+public final class SpanishWakePhrase {
     static final String GRAMMAR = "[\"ey sebas\",\"hey sebas\",\"eh sebas\",\"[unk]\"]";
-    static boolean isSelected(String phrase) {
+    public static boolean isSelected(String phrase) {
         String p = normalize(phrase);
         return p.equals("ey sebas") || p.equals("hey sebas") || p.equals("eh sebas");
     }
