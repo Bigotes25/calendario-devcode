@@ -76,6 +76,18 @@ jobs:
         shell: bash
         run: |
           python3 sebastian_patch.py production
+          python3 spanish_patch.py
+
+      - name: Prepare and test offline Spanish model
+        shell: bash
+        run: |
+          curl -fL --retry 3 https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip -o vosk-es.zip
+          echo '09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f  vosk-es.zip' | sha256sum -c -
+          unzip -q vosk-es.zip
+          cp -R vosk-model-small-es-0.42 GPTWake/app/src/main/assets/vosk-es
+          python3 -m venv .audio-test
+          .audio-test/bin/pip install vosk==0.3.45
+          .audio-test/bin/python spanish/test_spanish_audio.py vosk-model-small-es-0.42 spanish/fixtures | tee spanish-audio-test.txt
 
       - name: Run unit tests
         shell: bash
@@ -88,36 +100,37 @@ jobs:
         run: |
           cd GPTWake
           ./gradlew :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk ../Sebastian-Wake-v0.1.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../Sebastian-Wake-v0.2.apk
           cd ..
-          sha256sum Sebastian-Wake-v0.1.apk | tee Sebastian-Wake-v0.1.sha256
+          sha256sum Sebastian-Wake-v0.2.apk | tee Sebastian-Wake-v0.2.sha256
 
       - name: Validate APK integrity, signature and ARM64 compatibility
         shell: bash
         run: |
           set -euo pipefail
-          apk=Sebastian-Wake-v0.1.apk
+          apk=Sebastian-Wake-v0.2.apk
           bt="$ANDROID_HOME/build-tools/37.0.0"
           test -s "$apk"
           unzip -t "$apk" > apk-integrity.txt
           "$bt/apksigner" verify --verbose --print-certs "$apk" | tee apk-signature.txt
           "$bt/aapt2" dump badging "$apk" | tee apk-badging.txt
           "$bt/zipalign" -c -P 16 -v 4 "$apk" | tee apk-alignment.txt
-          grep -q "package: name='com.desmond.gptwake.sebastian' versionCode='100' versionName='1.1.0-sebastian-0.1'" apk-badging.txt
+          grep -q "package: name='com.desmond.gptwake.sebastian' versionCode='101' versionName='1.1.0-sebastian-0.2'" apk-badging.txt
           grep -q "minSdkVersion:'32'" apk-badging.txt
           grep -q "native-code: 'arm64-v8a'" apk-badging.txt
-          sha256sum -c Sebastian-Wake-v0.1.sha256
+          sha256sum -c Sebastian-Wake-v0.2.sha256
           echo "$GITHUB_SHA" > build-commit.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Sebastian-Wake-v0.1
+          name: Sebastian-Wake-v0.2
           path: |
-            Sebastian-Wake-v0.1.apk
-            Sebastian-Wake-v0.1.sha256
+            Sebastian-Wake-v0.2.apk
+            Sebastian-Wake-v0.2.sha256
             apk-*.txt
             build-commit.txt
+            spanish-audio-test.txt
           if-no-files-found: error
 
       - name: Publish verified debug APK
@@ -125,8 +138,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          tag="sebastian-v0.1-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          tag="sebastian-v0.2-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --prerelease --title 'Sebastián Wake v0.1 (debug)' \
-            --notes 'APK debug firmada. Versión 1.1.0-sebastian-0.1 (100), ARM64, Android API 32 o superior. Integridad, firma y alineación verificadas; pruebas unitarias superadas. Pendiente de prueba física en el teléfono.' \
-            Sebastian-Wake-v0.1.apk Sebastian-Wake-v0.1.sha256 apk-*.txt build-commit.txt
+            --prerelease --title 'Sebastián Wake v0.2 (debug)' \
+            --notes 'APK debug firmada. Versión 1.1.0-sebastian-0.2 (101), ARM64, Android API 32 o superior. Integridad, firma y alineación verificadas; pruebas unitarias superadas. Detector local en español con Vosk. Pruebas de audio sintético positivas y negativas superadas. Pendiente de prueba con la voz del usuario. La firma debug cambia respecto a v0.1: desinstalar la versión anterior antes de instalar esta.' \
+            Sebastian-Wake-v0.2.apk Sebastian-Wake-v0.2.sha256 apk-*.txt build-commit.txt spanish-audio-test.txt
