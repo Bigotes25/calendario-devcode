@@ -81,3 +81,8 @@ replace(ui, '''    var value by remember { mutableFloatStateOf(WakeWordStore.thr
         return
     }
     var value by remember { mutableFloatStateOf(WakeWordStore.threshold(context).coerceIn(0.20f, 0.60f)) }''')
+replace(tests/'ui/GptWakeScreenTest.kt',
+        '        compose.onNodeWithText("Sensitivity").performScrollTo().assertIsDisplayed()',
+        '        compose.onNodeWithText("Di «ey sebas» y deja una breve pausa.").performScrollTo().assertIsDisplayed()\n'
+        '        compose.onNodeWithText("Sensitivity").assertDoesNotExist()\n'
+        '        compose.runOnIdle { assertEquals("ey sebas", WakeWordStore.phrase(context)) }')
