@@ -74,4 +74,17 @@ elif args.stage == "production":
     replace_once(strings, '<string name="wake_word_hint">Use a different wake word (Chinese or English)</string>',
                           '<string name="wake_word_hint">Escribe “ey sebas” para el detector optimizado</string>')
 
+    # Keep the upstream replacement test explicit about its sensitivity fixture.
+    # The edition changes the default phrase, not the custom-replaces-default contract.
+    engine_test = root / "app/src/test/java/com/desmond/gptwake/KwsEngineTest.java"
+    replace_once(engine_test,
+        '        KwsEngine.keywordsThreshold = KwsEngine.DEFAULT_THRESHOLD;',
+        '        KwsEngine.keywordsThreshold = 0.40f;')
+    replace_once(engine_test,
+        '        assertEquals("zh ī m á k āi m én :1.5 #0.4 @芝麻开门", Spotter.keywords);',
+        '        assertEquals("EY1 S EH1 B AA0 S :1.5 #0.4 @ey_sebas\\n"\n'
+        '                + "EY1 S EY1 B AA0 S @ey_sebas_alt1\\n"\n'
+        '                + "EY1 S EH1 B AH0 S @ey_sebas_alt2\\n"\n'
+        '                + "EY1 S EH1 B AE0 S @ey_sebas_alt3", Spotter.keywords);')
+
     print("Applied Sebastian production patch")
