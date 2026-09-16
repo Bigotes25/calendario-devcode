@@ -58,6 +58,7 @@ else:
  s=s.replace('        launcher = mockStatic(GptLauncher.class);','        launcher = mockStatic(GptLauncher.class);\n        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(true);')
  test.write_text(s)
  shutil.copyfile('casa-strict/CasaScreenTest.java',t/'CasaScreenTest.java')
+ shutil.copyfile('casa-strict/CasaEnabledLaunchTest.java',t/'CasaEnabledLaunchTest.java')
  gradle=Path('GPTWake/app/build.gradle.kts');s=gradle.read_text().replace('versionCode = 102','versionCode = 103').replace('1.1.0-sebastian-casa-0.3','1.1.0-sebastian-casa-0.4');gradle.write_text(s)
  assert all(hashlib.sha256(Path(f).read_bytes()).hexdigest()==h for f,h in protected.items())
  Path('casa-detector-preservation.txt').write_text('PASS: existing sources except launcher, controller and MainActivity setup prompt unchanged by strict Casa patch. Recognition code unchanged.\n')

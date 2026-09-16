@@ -49,6 +49,9 @@ public final class CasaAccessibilityService extends AccessibilityService {
  private static String value(CharSequence c){return c==null?"":c.toString();}
  private void inspect() {
   AccessibilityNodeInfo root=getRootInActiveWindow();if(root==null){stableSince=0;return;}
+  if(!"com.openai.chatgpt".equals(value(root.getPackageName()))) {
+   stableSince=0;root.recycle();return;
+  }
   List<AccessibilityNodeInfo> nodes=new ArrayList<>();
   try {
    collect(root,nodes);
