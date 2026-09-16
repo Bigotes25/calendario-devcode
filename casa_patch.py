@@ -65,6 +65,22 @@ else:
             return;
         }
         if (!deeplinkTried) {''')
+    replace(controller, '    private boolean projectPending;',
+            '    private boolean projectPending;\n    private long launchGeneration;')
+    replace(controller, '        launchStartedAt = SystemClock.elapsedRealtime();',
+            '        launchGeneration++;\n        launchStartedAt = SystemClock.elapsedRealtime();')
+    source = controller.read_text()
+    assert source.count('later(this::checkVoiceConfirm, ') == 3
+    source = source.replace('later(this::checkVoiceConfirm, ', 'scheduleVoiceConfirm(')
+    controller.write_text(source)
+    replace(controller, '    private void checkVoiceConfirm() {', '''    private void scheduleVoiceConfirm(long delayMs) {
+        final long generation = launchGeneration;
+        later(() -> {
+            if (generation == launchGeneration) checkVoiceConfirm();
+        }, delayMs);
+    }
+
+    private void checkVoiceConfirm() {''')
     test = tests/'WakeControllerTest.java'
     text = test.read_text()
     pos = text.rfind('\n}')

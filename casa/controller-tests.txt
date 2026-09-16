@@ -57,3 +57,30 @@
         launcher.verify(() -> GptLauncher.launchDeeplink(any()), never());
         assertEquals(WakeController.State.STOPPED, controller.state());
     }
+
+    @Test
+    public void previousSessionTimeoutCannotAdvanceNewProjectLaunch() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(true);
+        listen();
+        controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size() - 1).run();
+        Runnable oldTimeout = delayed.get(delayed.size() - 1);
+        monitor.when(AudioStateMonitor::isVoiceConfirmed).thenReturn(true);
+        controller.onAudioStateChanged("voice started");
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(1));
+        controller.onAudioStateChanged("voice ended");
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(1600));
+        monitor.when(AudioStateMonitor::hasOwnLiveCapture).thenReturn(true);
+        delayed.get(delayed.size() - 1).run();
+        assertEquals(WakeController.State.KWS_LISTENING, controller.state());
+        controller.resetCounters();
+        monitor.when(AudioStateMonitor::isVoiceConfirmed).thenReturn(false);
+        controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size() - 1).run();
+        Runnable newTimeout = delayed.get(delayed.size() - 1);
+        oldTimeout.run();
+        launcher.verify(() -> GptLauncher.launchDirect(any()), never());
+        assertEquals(WakeController.State.CHATGPT_LAUNCHING, controller.state());
+        newTimeout.run();
+        launcher.verify(() -> GptLauncher.launchDirect(any()), times(1));
+    }
