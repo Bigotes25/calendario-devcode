@@ -1,4 +1,4 @@
-name: Build Sebastian Wake APK
+name: Build Sebastian Casa APK
 
 on:
   push:
@@ -89,6 +89,26 @@ jobs:
           .audio-test/bin/pip install vosk==0.3.45
           .audio-test/bin/python spanish/test_spanish_audio.py vosk-model-small-es-0.42 spanish/fixtures | tee spanish-audio-test.txt
 
+      - name: RED - project launch test rejects the previous generic route
+        shell: bash
+        run: |
+          python3 casa_patch.py tests
+          cd GPTWake
+          set +e
+          ./gradlew :app:testDebugUnitTest --tests 'com.desmond.gptwake.GptLauncherCasaTest.launchPrioritizesCasaProjectVoice*' > ../casa-red-test.log 2>&1
+          status=$?
+          set -e
+          cat ../casa-red-test.log
+          xml='app/build/test-results/testDebugUnitTest/TEST-com.desmond.gptwake.GptLauncherCasaTest.xml'
+          test "$status" -ne 0
+          test -f "$xml"
+          grep -q 'launchPrioritizesCasaProjectVoice' "$xml"
+          grep -Eq 'failures="[1-9]' "$xml"
+          echo 'RED confirmed: previous launch does not target Casa.'
+
+      - name: Apply Casa launch and branding
+        run: python3 casa_patch.py production
+
       - name: Run unit tests
         shell: bash
         run: |
@@ -100,37 +120,39 @@ jobs:
         run: |
           cd GPTWake
           ./gradlew :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk ../Sebastian-Wake-v0.2.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../Sebastian-Casa-v0.3.apk
           cd ..
-          sha256sum Sebastian-Wake-v0.2.apk | tee Sebastian-Wake-v0.2.sha256
+          sha256sum Sebastian-Casa-v0.3.apk | tee Sebastian-Casa-v0.3.sha256
 
       - name: Validate APK integrity, signature and ARM64 compatibility
         shell: bash
         run: |
           set -euo pipefail
-          apk=Sebastian-Wake-v0.2.apk
+          apk=Sebastian-Casa-v0.3.apk
           bt="$ANDROID_HOME/build-tools/37.0.0"
           test -s "$apk"
           unzip -t "$apk" > apk-integrity.txt
           "$bt/apksigner" verify --verbose --print-certs "$apk" | tee apk-signature.txt
           "$bt/aapt2" dump badging "$apk" | tee apk-badging.txt
           "$bt/zipalign" -c -P 16 -v 4 "$apk" | tee apk-alignment.txt
-          grep -q "package: name='com.desmond.gptwake.sebastian' versionCode='101' versionName='1.1.0-sebastian-0.2'" apk-badging.txt
+          grep -q "package: name='com.desmond.gptwake.sebastian' versionCode='102' versionName='1.1.0-sebastian-casa-0.3'" apk-badging.txt
+          grep -q "application-label:'Sebastián · Casa'" apk-badging.txt
           grep -q "minSdkVersion:'32'" apk-badging.txt
           grep -q "native-code: 'arm64-v8a'" apk-badging.txt
-          sha256sum -c Sebastian-Wake-v0.2.sha256
+          sha256sum -c Sebastian-Casa-v0.3.sha256
           echo "$GITHUB_SHA" > build-commit.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Sebastian-Wake-v0.2
+          name: Sebastian-Casa-v0.3
           path: |
-            Sebastian-Wake-v0.2.apk
-            Sebastian-Wake-v0.2.sha256
+            Sebastian-Casa-v0.3.apk
+            Sebastian-Casa-v0.3.sha256
             apk-*.txt
             build-commit.txt
             spanish-audio-test.txt
+            casa-detector-preservation.txt
           if-no-files-found: error
 
       - name: Publish verified debug APK
@@ -138,8 +160,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          tag="sebastian-v0.2-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          tag="sebastian-casa-v0.3-build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --prerelease --title 'Sebastián Wake v0.2 (debug)' \
-            --notes 'APK debug firmada. Versión 1.1.0-sebastian-0.2 (101), ARM64, Android API 32 o superior. Integridad, firma y alineación verificadas; pruebas unitarias superadas. Detector local en español con Vosk. Pruebas de audio sintético positivas y negativas superadas. Pendiente de prueba con la voz del usuario. La firma debug cambia respecto a v0.1: desinstalar la versión anterior antes de instalar esta.' \
-            Sebastian-Wake-v0.2.apk Sebastian-Wake-v0.2.sha256 apk-*.txt build-commit.txt spanish-audio-test.txt
+            --prerelease --title 'Sebastián · Casa v0.3 (debug)' \
+            --notes 'APK debug firmada para Sebastián · Casa. Versión 1.1.0-sebastian-casa-0.3 (102), ARM64, Android API 32 o superior. Detector Ey Sebas y reconocimiento español sin cambios. Intenta primero el enlace del proyecto Casa con mode=voice; si Android lo rechaza o no se confirma voz tras 7 segundos, usa el lanzamiento anterior de Voice. No se puede verificar automáticamente el proyecto que ChatGPT abre. Pendiente de prueba física en Samsung con la cuenta correcta. Firma debug nueva: desinstalar la APK anterior antes de instalar.' \
+            Sebastian-Casa-v0.3.apk Sebastian-Casa-v0.3.sha256 apk-*.txt build-commit.txt spanish-audio-test.txt casa-detector-preservation.txt

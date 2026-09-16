@@ -1,0 +1,59 @@
+    @Test
+    public void casaProjectTimeoutPreservesBothExistingFallbacks() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(true);
+        listen();
+        controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size() - 1).run();
+        launcher.verify(() -> GptLauncher.launchProjectVoice(any()), times(1));
+        launcher.verify(() -> GptLauncher.launchDirect(any()), never());
+        delayed.get(delayed.size() - 1).run();
+        launcher.verify(() -> GptLauncher.launchDirect(any()), times(1));
+        launcher.verify(() -> GptLauncher.launchDeeplink(any()), never());
+        delayed.get(delayed.size() - 1).run();
+        launcher.verify(() -> GptLauncher.launchDeeplink(any()), times(1));
+        monitor.when(AudioStateMonitor::hasOwnLiveCapture).thenReturn(true);
+        delayed.get(delayed.size() - 1).run();
+        assertEquals(WakeController.State.KWS_LISTENING, controller.state());
+        launcher.verify(() -> GptLauncher.launchProjectVoice(any()), times(1));
+        launcher.verify(() -> GptLauncher.launchDirect(any()), times(1));
+        launcher.verify(() -> GptLauncher.launchDeeplink(any()), times(1));
+    }
+
+    @Test
+    public void rejectedCasaProjectStartsDirectVoiceImmediately() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(false);
+        listen();
+        controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size() - 1).run();
+        launcher.verify(() -> GptLauncher.launchProjectVoice(any()), times(1));
+        launcher.verify(() -> GptLauncher.launchDirect(any()), times(1));
+        launcher.verify(() -> GptLauncher.launchDeeplink(any()), never());
+    }
+
+    @Test
+    public void confirmedProjectVoiceDoesNotTriggerFallback() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(true);
+        listen();
+        controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size() - 1).run();
+        monitor.when(AudioStateMonitor::isVoiceConfirmed).thenReturn(true);
+        controller.onAudioStateChanged("voice started");
+        delayed.get(delayed.size() - 1).run();
+        assertEquals(WakeController.State.VOICE_ACTIVE, controller.state());
+        launcher.verify(() -> GptLauncher.launchDirect(any()), never());
+        launcher.verify(() -> GptLauncher.launchDeeplink(any()), never());
+    }
+
+    @Test
+    public void stopAfterProjectDispatchCancelsFallback() {
+        launcher.when(() -> GptLauncher.launchProjectVoice(any())).thenReturn(true);
+        listen();
+        controller.onKeyword("ey_sebas");
+        delayed.get(delayed.size() - 1).run();
+        Runnable timeout = delayed.get(delayed.size() - 1);
+        controller.stop();
+        timeout.run();
+        launcher.verify(() -> GptLauncher.launchDirect(any()), never());
+        launcher.verify(() -> GptLauncher.launchDeeplink(any()), never());
+        assertEquals(WakeController.State.STOPPED, controller.state());
+    }
