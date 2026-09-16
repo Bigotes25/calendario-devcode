@@ -89,7 +89,8 @@ jobs:
           cd GPTWake
           ./gradlew :app:assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../Sebastian-Wake-v0.1.apk
-          sha256sum ../Sebastian-Wake-v0.1.apk | tee ../Sebastian-Wake-v0.1.sha256
+          cd ..
+          sha256sum Sebastian-Wake-v0.1.apk | tee Sebastian-Wake-v0.1.sha256
 
       - name: Validate APK integrity, signature and ARM64 compatibility
         shell: bash
@@ -101,9 +102,9 @@ jobs:
           unzip -t "$apk" > apk-integrity.txt
           "$bt/apksigner" verify --verbose --print-certs "$apk" | tee apk-signature.txt
           "$bt/aapt2" dump badging "$apk" | tee apk-badging.txt
-          "$bt/zipalign" -c -P 16 -v 4 "$apk" > apk-alignment.txt
+          "$bt/zipalign" -c -P 16 -v 4 "$apk" | tee apk-alignment.txt
           grep -q "package: name='com.desmond.gptwake.sebastian' versionCode='100' versionName='1.1.0-sebastian-0.1'" apk-badging.txt
-          grep -q "sdkVersion:'32'" apk-badging.txt
+          grep -q "minSdkVersion:'32'" apk-badging.txt
           grep -q "native-code: 'arm64-v8a'" apk-badging.txt
           sha256sum -c Sebastian-Wake-v0.1.sha256
           echo "$GITHUB_SHA" > build-commit.txt
